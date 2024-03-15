@@ -23,6 +23,7 @@ import (
 	"text/template"
 	"time"
 
+	"android/soong/elf"
 	"android/soong/ui/metrics"
 )
 
@@ -342,10 +343,21 @@ func Build(ctx Context, config Config) {
 			installCleanIfNecessary(ctx, config)
 		}
 		runNinjaForBuild(ctx, config)
+		updateBuildIdDir(ctx, config)
 	}
 
 	if what&RunDistActions != 0 {
 		runDistActions(ctx, config)
+	}
+}
+
+func updateBuildIdDir(ctx Context, config Config) {
+	ctx.BeginTrace(metrics.RunShutdownTool, "update_build_id_dir")
+	defer ctx.EndTrace()
+
+	symbolsDir := filepath.Join(config.ProductOut(), "symbols")
+	if err := elf.UpdateBuildIdDir(symbolsDir); err != nil {
+		ctx.Printf("failed to update %s/.build-id: %v", symbolsDir, err)
 	}
 }
 
