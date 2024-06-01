@@ -1471,10 +1471,6 @@ func (c *deviceConfig) ExtraVndkVersions() []string {
 	return c.config.productVariables.ExtraVndkVersions
 }
 
-func (c *deviceConfig) VndkUseCoreVariant() bool {
-	return Bool(c.config.productVariables.VndkUseCoreVariant) && Bool(c.config.productVariables.KeepVndk)
-}
-
 func (c *deviceConfig) SystemSdkVersions() []string {
 	return c.config.productVariables.DeviceSystemSdkVersions
 }
@@ -2125,6 +2121,7 @@ var (
 		"RELEASE_APEX_CONTRIBUTIONS_SDKEXTENSIONS",
 		"RELEASE_APEX_CONTRIBUTIONS_SWCODEC",
 		"RELEASE_APEX_CONTRIBUTIONS_STATSD",
+		"RELEASE_APEX_CONTRIBUTIONS_TELEMETRY_TVP",
 		"RELEASE_APEX_CONTRIBUTIONS_TZDATA",
 		"RELEASE_APEX_CONTRIBUTIONS_UWB",
 		"RELEASE_APEX_CONTRIBUTIONS_WIFI",
