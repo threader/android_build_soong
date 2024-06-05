@@ -1182,6 +1182,7 @@ var (
 		"test_com.android.os.statsd",
 		"test_com.android.permission",
 		"test_com.android.wifi",
+		"test_imgdiag_com.android.art",
 		"test_jitzygote_com.android.art",
 		// go/keep-sorted end
 	}
