@@ -14,24 +14,13 @@
 
 package {
     default_applicable_licenses: ["Android-Apache-2.0"],
+    default_team: "trendy_team_build",
 }
 
-bootstrap_go_package {
-    name: "soong-cmd-release_config-lib",
-    pkgPath: "android/soong/cmd/release_config/release_config_lib",
-    deps: [
-        "golang-protobuf-encoding-prototext",
-        "golang-protobuf-reflect-protoreflect",
-        "golang-protobuf-runtime-protoimpl",
-        "soong-cmd-release_config-proto",
-        "blueprint-pathtools",
+filegroup {
+    name: "run_tool_with_logging_script",
+    visibility: [
+        "//build/soong/tests:__subpackages__",
     ],
-    srcs: [
-        "flag_artifact.go",
-        "flag_declaration.go",
-        "flag_value.go",
-        "release_config.go",
-        "release_configs.go",
-        "util.go",
-    ],
+    srcs: ["run_tool_with_logging"],
 }
