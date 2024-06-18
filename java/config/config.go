@@ -51,6 +51,7 @@ var (
 		"core-icu4j",
 		"core-oj",
 		"core-libart",
+		"wear-sdk.impl",
 	}
 )
 
