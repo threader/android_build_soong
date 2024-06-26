@@ -118,9 +118,6 @@ type apiScope struct {
 	// The tag to use to depend on the stubs source module (if separate from the API module).
 	stubsSourceTag scopeDependencyTag
 
-	// The tag to use to depend on the API file generating module (if separate from the stubs source module).
-	apiFileTag scopeDependencyTag
-
 	// The tag to use to depend on the stubs source and API module.
 	stubsSourceAndApiTag scopeDependencyTag
 
@@ -194,11 +191,6 @@ func initApiScope(scope *apiScope) *apiScope {
 		name:             name + "-stubs-source",
 		apiScope:         scope,
 		depInfoExtractor: (*scopePaths).extractStubsSourceInfoFromDep,
-	}
-	scope.apiFileTag = scopeDependencyTag{
-		name:             name + "-api",
-		apiScope:         scope,
-		depInfoExtractor: (*scopePaths).extractApiInfoFromDep,
 	}
 	scope.stubsSourceAndApiTag = scopeDependencyTag{
 		name:             name + "-stubs-source-and-api",
@@ -802,12 +794,6 @@ func (paths *scopePaths) extractApiInfoFromApiStubsProvider(provider ApiStubsPro
 		paths.removedApiFilePath = android.OptionalPathForPath(removedApiFilePath)
 	}
 	return combinedError
-}
-
-func (paths *scopePaths) extractApiInfoFromDep(ctx android.ModuleContext, dep android.Module) error {
-	return paths.treatDepAsApiStubsProvider(dep, func(provider ApiStubsProvider) error {
-		return paths.extractApiInfoFromApiStubsProvider(provider, Everything)
-	})
 }
 
 func (paths *scopePaths) extractStubsSourceInfoFromApiStubsProviders(provider ApiStubsSrcProvider, stubsType StubsType) error {
