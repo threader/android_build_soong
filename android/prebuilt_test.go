@@ -15,6 +15,7 @@
 package android
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/blueprint"
@@ -493,6 +494,7 @@ type prebuiltModule struct {
 	properties struct {
 		Srcs []string `android:"path,arch_variant"`
 	}
+	src Path
 }
 
 func newPrebuiltModule() Module {
@@ -508,15 +510,22 @@ func (p *prebuiltModule) Name() string {
 }
 
 func (p *prebuiltModule) GenerateAndroidBuildActions(ctx ModuleContext) {
-	var src Path
 	if len(p.properties.Srcs) >= 1 {
-		src = p.prebuilt.SingleSourcePath(ctx)
+		p.src = p.prebuilt.SingleSourcePath(ctx)
 	}
-	ctx.SetOutputFiles(Paths{src}, "")
 }
 
 func (p *prebuiltModule) Prebuilt() *Prebuilt {
 	return &p.prebuilt
+}
+
+func (p *prebuiltModule) OutputFiles(tag string) (Paths, error) {
+	switch tag {
+	case "":
+		return Paths{p.src}, nil
+	default:
+		return nil, fmt.Errorf("unsupported module reference tag %q", tag)
+	}
 }
 
 type sourceModuleProperties struct {
