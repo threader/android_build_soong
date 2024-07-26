@@ -1228,12 +1228,15 @@ func (j *Module) compile(ctx android.ModuleContext, extraSrcJars, extraClasspath
 			ctx.ModuleErrorf("headers_only is enabled but Turbine is disabled.")
 		}
 
-		_, j.headerJarFile, _ =
-			j.compileJavaHeader(ctx, uniqueJavaFiles, srcJars, deps, flags, jarName,
-				extraCombinedJars)
+		_, combinedHeaderJarFile := j.compileJavaHeader(ctx, uniqueJavaFiles, srcJars, deps, flags, jarName,
+			extraCombinedJars)
+
+		combinedHeaderJarFile = j.jarjarIfNecessary(ctx, combinedHeaderJarFile, jarName, "turbine")
+		combinedHeaderJarFile = j.repackageFlagsIfNecessary(ctx, combinedHeaderJarFile, jarName, "repackage-turbine")
 		if ctx.Failed() {
 			return
 		}
+		j.headerJarFile = combinedHeaderJarFile
 
 		android.SetProvider(ctx, JavaInfoProvider, &JavaInfo{
 			HeaderJars:                          android.PathsIfNonNil(j.headerJarFile),
@@ -1347,11 +1350,12 @@ func (j *Module) compile(ctx android.ModuleContext, extraSrcJars, extraClasspath
 			// with sharding enabled. See: b/77284273.
 		}
 		extraJars := append(slices.Clone(kotlinHeaderJars), extraCombinedJars...)
-		headerJarFileWithoutDepsOrJarjar, j.headerJarFile, j.repackagedHeaderJarFile =
+		var combinedHeaderJarFile android.Path
+		headerJarFileWithoutDepsOrJarjar, combinedHeaderJarFile =
 			j.compileJavaHeader(ctx, uniqueJavaFiles, srcJars, deps, flags, jarName, extraJars)
-		if ctx.Failed() {
-			return
-		}
+
+		j.headerJarFile = j.jarjarIfNecessary(ctx, combinedHeaderJarFile, jarName, "turbine")
+		j.repackagedHeaderJarFile = j.repackageFlagsIfNecessary(ctx, j.headerJarFile, jarName, "turbine")
 	}
 	if len(uniqueJavaFiles) > 0 || len(srcJars) > 0 {
 		hasErrorproneableFiles := false
@@ -1548,22 +1552,17 @@ func (j *Module) compile(ctx android.ModuleContext, extraSrcJars, extraClasspath
 	}
 
 	// jarjar implementation jar if necessary
-	if j.expandJarjarRules != nil {
-		// Transform classes.jar into classes-jarjar.jar
-		jarjarFile := android.PathForModuleOut(ctx, "jarjar", jarName)
-		TransformJarJar(ctx, jarjarFile, outputFile, j.expandJarjarRules)
-		outputFile = jarjarFile
+	jarjarFile := j.jarjarIfNecessary(ctx, outputFile, jarName, "")
+	outputFile = jarjarFile
 
-		// jarjar resource jar if necessary
-		if j.resourceJar != nil {
-			resourceJarJarFile := android.PathForModuleOut(ctx, "res-jarjar", jarName)
-			TransformJarJar(ctx, resourceJarJarFile, j.resourceJar, j.expandJarjarRules)
-			j.resourceJar = resourceJarJarFile
-		}
+	// jarjar resource jar if necessary
+	if j.resourceJar != nil {
+		resourceJarJarFile := j.jarjarIfNecessary(ctx, j.resourceJar, jarName, "resource")
+		j.resourceJar = resourceJarJarFile
+	}
 
-		if ctx.Failed() {
-			return
-		}
+	if ctx.Failed() {
+		return
 	}
 
 	// Check package restrictions if necessary.
@@ -1896,16 +1895,13 @@ func CheckKotlincFlags(ctx android.ModuleContext, flags []string) {
 
 func (j *Module) compileJavaHeader(ctx android.ModuleContext, srcFiles, srcJars android.Paths,
 	deps deps, flags javaBuilderFlags, jarName string,
-	extraJars android.Paths) (headerJar, jarjarAndDepsHeaderJar, jarjarAndDepsRepackagedHeaderJar android.Path) {
+	extraJars android.Paths) (headerJar android.Path, combinedHeaderJar android.Path) {
 
 	var jars android.Paths
 	if len(srcFiles) > 0 || len(srcJars) > 0 {
 		// Compile java sources into turbine.jar.
 		turbineJar := android.PathForModuleOut(ctx, "turbine", jarName)
 		TransformJavaToHeaderClasses(ctx, turbineJar, srcFiles, srcJars, flags)
-		if ctx.Failed() {
-			return nil, nil, nil
-		}
 		jars = append(jars, turbineJar)
 		headerJar = turbineJar
 	}
@@ -1918,33 +1914,11 @@ func (j *Module) compileJavaHeader(ctx android.ModuleContext, srcFiles, srcJars 
 
 	// we cannot skip the combine step for now if there is only one jar
 	// since we have to strip META-INF/TRANSITIVE dir from turbine.jar
-	combinedJar := android.PathForModuleOut(ctx, "turbine-combined", jarName)
-	TransformJarsToJar(ctx, combinedJar, "for turbine", jars, android.OptionalPath{},
+	combinedHeaderJarOutputPath := android.PathForModuleOut(ctx, "turbine-combined", jarName)
+	TransformJarsToJar(ctx, combinedHeaderJarOutputPath, "for turbine", jars, android.OptionalPath{},
 		false, nil, []string{"META-INF/TRANSITIVE"})
-	jarjarAndDepsHeaderJar = combinedJar
 
-	if j.expandJarjarRules != nil {
-		// Transform classes.jar into classes-jarjar.jar
-		jarjarFile := android.PathForModuleOut(ctx, "turbine-jarjar", jarName)
-		TransformJarJar(ctx, jarjarFile, jarjarAndDepsHeaderJar, j.expandJarjarRules)
-		jarjarAndDepsHeaderJar = jarjarFile
-		if ctx.Failed() {
-			return nil, nil, nil
-		}
-	}
-
-	if j.repackageJarjarRules != nil {
-		repackagedJarjarFile := android.PathForModuleOut(ctx, "repackaged-turbine-jarjar", jarName)
-		TransformJarJar(ctx, repackagedJarjarFile, jarjarAndDepsHeaderJar, j.repackageJarjarRules)
-		jarjarAndDepsRepackagedHeaderJar = repackagedJarjarFile
-		if ctx.Failed() {
-			return nil, nil, nil
-		}
-	} else {
-		jarjarAndDepsRepackagedHeaderJar = jarjarAndDepsHeaderJar
-	}
-
-	return headerJar, jarjarAndDepsHeaderJar, jarjarAndDepsRepackagedHeaderJar
+	return headerJar, combinedHeaderJarOutputPath
 }
 
 func (j *Module) instrument(ctx android.ModuleContext, flags javaBuilderFlags,
@@ -2732,9 +2706,19 @@ func (j *Module) repackageFlagsIfNecessary(ctx android.ModuleContext, infile and
 	if j.repackageJarjarRules == nil {
 		return infile
 	}
-	repackagedJarjarFile := android.PathForModuleOut(ctx, "repackaged-jarjar", info+jarName)
+	repackagedJarjarFile := android.PathForModuleOut(ctx, "repackaged-jarjar", info, jarName)
 	TransformJarJar(ctx, repackagedJarjarFile, infile, j.repackageJarjarRules)
 	return repackagedJarjarFile
+}
+
+func (j *Module) jarjarIfNecessary(ctx android.ModuleContext, infile android.Path, jarName, info string) android.Path {
+	if j.expandJarjarRules == nil {
+		return infile
+	}
+	jarjarFile := android.PathForModuleOut(ctx, "jarjar", info, jarName)
+	TransformJarJar(ctx, jarjarFile, infile, j.expandJarjarRules)
+	return jarjarFile
+
 }
 
 func addPlugins(deps *deps, pluginJars android.Paths, pluginClasses ...string) {
