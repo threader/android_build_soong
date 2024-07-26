@@ -1119,11 +1119,6 @@ func (p basePath) withRel(rel string) basePath {
 	return p
 }
 
-func (p basePath) RelativeToTop() Path {
-	ensureTestOnly()
-	return p
-}
-
 // SourcePath is a Path representing a file path rooted from SrcDir
 type SourcePath struct {
 	basePath
@@ -1133,6 +1128,11 @@ var _ Path = SourcePath{}
 
 func (p SourcePath) withRel(rel string) SourcePath {
 	p.basePath = p.basePath.withRel(rel)
+	return p
+}
+
+func (p SourcePath) RelativeToTop() Path {
+	ensureTestOnly()
 	return p
 }
 
