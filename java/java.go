@@ -2924,7 +2924,7 @@ var _ android.IDECustomizedModuleName = (*Import)(nil)
 // Collect information for opening IDE project files in java/jdeps.go.
 
 func (j *Import) IDEInfo(dpInfo *android.IdeInfo) {
-	dpInfo.Jars = append(dpInfo.Jars, j.PrebuiltSrcs()...)
+	dpInfo.Jars = append(dpInfo.Jars, j.combinedHeaderFile.String())
 }
 
 func (j *Import) IDECustomizedModuleName() string {
