@@ -2664,43 +2664,46 @@ func (j *Import) GenerateAndroidBuildActions(ctx android.ModuleContext) {
 
 	// Always pass the input jars to TransformJarsToJar, even if there is only a single jar, we need the output
 	// file of the module to be named jarName.
-	outputFile := android.PathForModuleOut(ctx, "combined", jarName)
+	var outputFile android.Path
+	combinedImplementationJar := android.PathForModuleOut(ctx, "combined", jarName)
 	implementationJars := append(slices.Clone(jars), staticJars...)
-	TransformJarsToJar(ctx, outputFile, "combine prebuilt implementation jars", implementationJars, android.OptionalPath{},
+	TransformJarsToJar(ctx, combinedImplementationJar, "combine prebuilt implementation jars", implementationJars, android.OptionalPath{},
 		false, j.properties.Exclude_files, j.properties.Exclude_dirs)
+	outputFile = combinedImplementationJar
 
 	// If no dependencies have separate header jars then there is no need to create a separate
 	// header jar for this module.
 	reuseImplementationJarAsHeaderJar := slices.Equal(staticJars, staticHeaderJars)
 
-	var headerOutputFile android.ModuleOutPath
+	var headerJar android.Path
 	if reuseImplementationJarAsHeaderJar {
-		headerOutputFile = outputFile
+		headerJar = outputFile
 	} else {
 		headerJars := append(slices.Clone(jars), staticHeaderJars...)
-		headerOutputFile = android.PathForModuleOut(ctx, "turbine-combined", jarName)
+		headerOutputFile := android.PathForModuleOut(ctx, "turbine-combined", jarName)
 		TransformJarsToJar(ctx, headerOutputFile, "combine prebuilt header jars", headerJars, android.OptionalPath{},
 			false, j.properties.Exclude_files, j.properties.Exclude_dirs)
+		headerJar = headerOutputFile
 	}
 
 	if Bool(j.properties.Jetifier) {
-		inputFile := outputFile
-		outputFile = android.PathForModuleOut(ctx, "jetifier", jarName)
-		TransformJetifier(ctx, outputFile, inputFile)
+		jetifierOutputFile := android.PathForModuleOut(ctx, "jetifier", jarName)
+		TransformJetifier(ctx, jetifierOutputFile, outputFile)
+		outputFile = jetifierOutputFile
 
 		if !reuseImplementationJarAsHeaderJar {
-			headerInputFile := headerOutputFile
-			headerOutputFile = android.PathForModuleOut(ctx, "jetifier-headers", jarName)
-			TransformJetifier(ctx, headerOutputFile, headerInputFile)
+			jetifierHeaderJar := android.PathForModuleOut(ctx, "jetifier-headers", jarName)
+			TransformJetifier(ctx, jetifierHeaderJar, headerJar)
+			headerJar = jetifierHeaderJar
 		} else {
-			headerOutputFile = outputFile
+			headerJar = outputFile
 		}
 	}
 
 	// Save the output file with no relative path so that it doesn't end up in a subdirectory when used as a resource.
 	// Also strip the relative path from the header output file so that the reuseImplementationJarAsHeaderJar check
 	// in a module that depends on this module considers them equal.
-	j.combinedHeaderFile = headerOutputFile.WithoutRel()
+	j.combinedHeaderFile = headerJar.WithoutRel()
 	j.combinedImplementationFile = outputFile.WithoutRel()
 
 	j.maybeInstall(ctx, jarName, outputFile)
