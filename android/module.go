@@ -1647,9 +1647,10 @@ func (m *ModuleBase) generateModuleTarget(ctx *moduleContext) {
 
 	var deps Paths
 
-	namespacePrefix := ctx.Namespace().id
-	if namespacePrefix != "" {
-		namespacePrefix = namespacePrefix + "-"
+	var namespacePrefix string
+	nameSpace := ctx.Namespace().Path
+	if nameSpace != "." {
+		namespacePrefix = strings.ReplaceAll(nameSpace, "/", ".") + "-"
 	}
 
 	if len(allInstalledFiles) > 0 {
