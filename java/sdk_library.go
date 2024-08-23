@@ -1548,6 +1548,8 @@ func (module *SdkLibrary) GenerateAndroidBuildActions(ctx android.ModuleContext)
 			scopeTag.extractDepInfo(ctx, to, scopePaths)
 
 			exportedComponents[ctx.OtherModuleName(to)] = struct{}{}
+
+			ctx.Phony(ctx.ModuleName(), scopePaths.stubsHeaderPath...)
 		}
 
 		if tag == implLibraryTag {
