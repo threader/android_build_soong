@@ -1959,7 +1959,7 @@ func (m *ModuleBase) GenerateBuildActions(blueprintCtx blueprint.ModuleContext) 
 
 			if x, ok := m.module.(IDEInfo); ok {
 				var result IdeInfo
-				x.IDEInfo(&result)
+				x.IDEInfo(ctx, &result)
 				result.BaseModuleName = x.BaseModuleName()
 				SetProvider(ctx, IdeInfoProviderKey, result)
 			}
@@ -2748,7 +2748,7 @@ func (c *buildTargetSingleton) GenerateBuildActions(ctx SingletonContext) {
 
 // Collect information for opening IDE project files in java/jdeps.go.
 type IDEInfo interface {
-	IDEInfo(ideInfo *IdeInfo)
+	IDEInfo(ctx BaseModuleContext, ideInfo *IdeInfo)
 	BaseModuleName() string
 }
 
