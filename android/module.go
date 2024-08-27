@@ -87,8 +87,6 @@ type Module interface {
 	ReplacedByPrebuilt()
 	IsReplacedByPrebuilt() bool
 	ExportedToMake() bool
-	InitRc() Paths
-	VintfFragments() Paths
 	EffectiveLicenseKinds() []string
 	EffectiveLicenseFiles() Paths
 
@@ -837,10 +835,6 @@ type ModuleBase struct {
 
 	noAddressSanitizer   bool
 	packagingSpecsDepSet *DepSet[PackagingSpec]
-	// katiInitRcInstalls and katiVintfInstalls track the install rules created by Soong that are
-	// allowed to have duplicates across modules and variants.
-	katiInitRcInstalls katiInstalls
-	katiVintfInstalls  katiInstalls
 
 	hooks hooks
 
@@ -850,12 +844,6 @@ type ModuleBase struct {
 	buildParams []BuildParams
 	ruleParams  map[blueprint.Rule]blueprint.RuleParams
 	variables   map[string]string
-
-	initRcPaths         Paths
-	vintfFragmentsPaths Paths
-
-	installedInitRcPaths         InstallPaths
-	installedVintfFragmentsPaths InstallPaths
 
 	// Merged Aconfig files for all transitive deps.
 	aconfigFilePaths Paths
@@ -1584,18 +1572,6 @@ func (m *ModuleBase) VintfFragmentModuleNames(ctx ConfigAndErrorContext) []strin
 	return m.base().commonProperties.Vintf_fragment_modules.GetOrDefault(m.ConfigurableEvaluator(ctx), nil)
 }
 
-func (m *ModuleBase) InitRc() Paths {
-	return append(Paths{}, m.initRcPaths...)
-}
-
-func (m *ModuleBase) VintfFragments() Paths {
-	return append(Paths{}, m.vintfFragmentsPaths...)
-}
-
-func (m *ModuleBase) CompileMultilib() *string {
-	return m.base().commonProperties.Compile_multilib
-}
-
 func (m *ModuleBase) generateModuleTarget(ctx *moduleContext) {
 	var allInstalledFiles InstallPaths
 	var allCheckbuildFiles Paths
@@ -1771,6 +1747,15 @@ type InstallFilesInfo struct {
 	// The following fields are private before, make it private again once we have
 	// better solution.
 	TransitiveInstallFiles *DepSet[InstallPath]
+	// katiInitRcInstalls and katiVintfInstalls track the install rules created by Soong that are
+	// allowed to have duplicates across modules and variants.
+	KatiInitRcInstalls           katiInstalls
+	KatiVintfInstalls            katiInstalls
+	InitRcPaths                  Paths
+	VintfFragmentsPaths          Paths
+	InstalledInitRcPaths         InstallPaths
+	InstalledVintfFragmentsPaths InstallPaths
+
 	// The files to copy to the dist as explicitly specified in the .bp file.
 	DistFiles TaggedDistFiles
 }
@@ -1867,30 +1852,36 @@ func (m *ModuleBase) GenerateBuildActions(blueprintCtx blueprint.ModuleContext) 
 			// so only a single rule is created for each init.rc or vintf fragment file.
 
 			if !m.InVendorRamdisk() {
-				m.initRcPaths = PathsForModuleSrc(ctx, m.commonProperties.Init_rc)
+				ctx.initRcPaths = PathsForModuleSrc(ctx, m.commonProperties.Init_rc)
 				rcDir := PathForModuleInstall(ctx, "etc", "init")
-				for _, src := range m.initRcPaths {
+				for _, src := range ctx.initRcPaths {
 					installedInitRc := rcDir.Join(ctx, src.Base())
-					m.katiInitRcInstalls = append(m.katiInitRcInstalls, katiInstall{
+					ctx.katiInitRcInstalls = append(ctx.katiInitRcInstalls, katiInstall{
 						from: src,
 						to:   installedInitRc,
 					})
 					ctx.PackageFile(rcDir, src.Base(), src)
-					m.installedInitRcPaths = append(m.installedInitRcPaths, installedInitRc)
+					ctx.installedInitRcPaths = append(ctx.installedInitRcPaths, installedInitRc)
 				}
+				installFiles.InitRcPaths = ctx.initRcPaths
+				installFiles.KatiInitRcInstalls = ctx.katiInitRcInstalls
+				installFiles.InstalledInitRcPaths = ctx.installedInitRcPaths
 			}
 
-			m.vintfFragmentsPaths = PathsForModuleSrc(ctx, m.commonProperties.Vintf_fragments.GetOrDefault(ctx, nil))
+			ctx.vintfFragmentsPaths = PathsForModuleSrc(ctx, m.commonProperties.Vintf_fragments.GetOrDefault(ctx, nil))
 			vintfDir := PathForModuleInstall(ctx, "etc", "vintf", "manifest")
-			for _, src := range m.vintfFragmentsPaths {
+			for _, src := range ctx.vintfFragmentsPaths {
 				installedVintfFragment := vintfDir.Join(ctx, src.Base())
-				m.katiVintfInstalls = append(m.katiVintfInstalls, katiInstall{
+				ctx.katiVintfInstalls = append(ctx.katiVintfInstalls, katiInstall{
 					from: src,
 					to:   installedVintfFragment,
 				})
 				ctx.PackageFile(vintfDir, src.Base(), src)
-				m.installedVintfFragmentsPaths = append(m.installedVintfFragmentsPaths, installedVintfFragment)
+				ctx.installedVintfFragmentsPaths = append(ctx.installedVintfFragmentsPaths, installedVintfFragment)
 			}
+			installFiles.VintfFragmentsPaths = ctx.vintfFragmentsPaths
+			installFiles.KatiVintfInstalls = ctx.katiVintfInstalls
+			installFiles.InstalledVintfFragmentsPaths = ctx.installedVintfFragmentsPaths
 		}
 
 		licensesPropertyFlattener(ctx)
@@ -2005,8 +1996,8 @@ func (m *ModuleBase) GenerateBuildActions(blueprintCtx blueprint.ModuleContext) 
 		var installed InstallPaths
 		installed = append(installed, ctx.katiInstalls.InstallPaths()...)
 		installed = append(installed, ctx.katiSymlinks.InstallPaths()...)
-		installed = append(installed, m.katiInitRcInstalls.InstallPaths()...)
-		installed = append(installed, m.katiVintfInstalls.InstallPaths()...)
+		installed = append(installed, ctx.katiInitRcInstalls.InstallPaths()...)
+		installed = append(installed, ctx.katiVintfInstalls.InstallPaths()...)
 		installedStrings := installed.Strings()
 
 		var targetRequired, hostRequired []string
