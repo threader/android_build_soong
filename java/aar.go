@@ -970,7 +970,7 @@ type AARImportProperties struct {
 	// Defaults to sdk_version if not set. See sdk_version for possible values.
 	Min_sdk_version *string
 	// List of java static libraries that the included ARR (android library prebuilts) has dependencies to.
-	Static_libs []string
+	Static_libs proptools.Configurable[[]string]
 	// List of java libraries that the included ARR (android library prebuilts) has dependencies to.
 	Libs []string
 	// If set to true, run Jetifier against .aar file. Defaults to false.
@@ -1100,7 +1100,7 @@ func (a *AARImport) DepsMutator(ctx android.BottomUpMutatorContext) {
 	}
 
 	ctx.AddVariationDependencies(nil, libTag, a.properties.Libs...)
-	ctx.AddVariationDependencies(nil, staticLibTag, a.properties.Static_libs...)
+	ctx.AddVariationDependencies(nil, staticLibTag, a.properties.Static_libs.GetOrDefault(ctx, nil)...)
 
 	a.usesLibrary.deps(ctx, false)
 }
