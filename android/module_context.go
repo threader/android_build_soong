@@ -522,6 +522,7 @@ func (m *moduleContext) getAconfigPaths() *Paths {
 
 func (m *moduleContext) packageFile(fullInstallPath InstallPath, srcPath Path, executable bool) PackagingSpec {
 	licenseFiles := m.Module().EffectiveLicenseFiles()
+	overrides := CopyOf(m.Module().base().commonProperties.Overrides)
 	spec := PackagingSpec{
 		relPathInPackage:      Rel(m, fullInstallPath.PartitionDir(), fullInstallPath.String()),
 		srcPath:               srcPath,
@@ -532,6 +533,8 @@ func (m *moduleContext) packageFile(fullInstallPath InstallPath, srcPath Path, e
 		skipInstall:           m.skipInstall(),
 		aconfigPaths:          m.getAconfigPaths(),
 		archType:              m.target.Arch.ArchType,
+		overrides:             &overrides,
+		owner:                 m.ModuleName(),
 	}
 	m.packagingSpecs = append(m.packagingSpecs, spec)
 	return spec
@@ -649,6 +652,7 @@ func (m *moduleContext) InstallSymlink(installPath InstallPath, name string, src
 		m.checkbuildFiles = append(m.checkbuildFiles, srcPath)
 	}
 
+	overrides := CopyOf(m.Module().base().commonProperties.Overrides)
 	m.packagingSpecs = append(m.packagingSpecs, PackagingSpec{
 		relPathInPackage: Rel(m, fullInstallPath.PartitionDir(), fullInstallPath.String()),
 		srcPath:          nil,
@@ -658,6 +662,8 @@ func (m *moduleContext) InstallSymlink(installPath InstallPath, name string, src
 		skipInstall:      m.skipInstall(),
 		aconfigPaths:     m.getAconfigPaths(),
 		archType:         m.target.Arch.ArchType,
+		overrides:        &overrides,
+		owner:            m.ModuleName(),
 	})
 
 	return fullInstallPath
@@ -693,6 +699,7 @@ func (m *moduleContext) InstallAbsoluteSymlink(installPath InstallPath, name str
 		m.installFiles = append(m.installFiles, fullInstallPath)
 	}
 
+	overrides := CopyOf(m.Module().base().commonProperties.Overrides)
 	m.packagingSpecs = append(m.packagingSpecs, PackagingSpec{
 		relPathInPackage: Rel(m, fullInstallPath.PartitionDir(), fullInstallPath.String()),
 		srcPath:          nil,
@@ -702,6 +709,8 @@ func (m *moduleContext) InstallAbsoluteSymlink(installPath InstallPath, name str
 		skipInstall:      m.skipInstall(),
 		aconfigPaths:     m.getAconfigPaths(),
 		archType:         m.target.Arch.ArchType,
+		overrides:        &overrides,
+		owner:            m.ModuleName(),
 	})
 
 	return fullInstallPath
