@@ -2294,26 +2294,6 @@ func (a *apexBundle) depVisitor(vctx *visitorContext, ctx android.ModuleContext,
 	return false
 }
 
-func collectAconfigFiles(ctx android.ModuleContext, apexFiles []apexFile) android.Paths {
-	var aconfigFiles android.Paths
-	for _, file := range apexFiles {
-		if file.module == nil {
-			continue
-		}
-		if dep, ok := android.OtherModuleProvider(ctx, file.module, android.AconfigPropagatingProviderKey); ok {
-			if len(dep.AconfigFiles) > 0 && dep.AconfigFiles[ctx.ModuleName()] != nil {
-				aconfigFiles = append(aconfigFiles, dep.AconfigFiles[ctx.ModuleName()]...)
-			}
-		}
-
-		validationFlag := ctx.DeviceConfig().AconfigContainerValidation()
-		if validationFlag == "error" || validationFlag == "warning" {
-			android.VerifyAconfigBuildMode(ctx, ctx.ModuleName(), file.module, validationFlag == "error")
-		}
-	}
-	return android.FirstUniquePaths(aconfigFiles)
-}
-
 func (a *apexBundle) shouldCheckDuplicate(ctx android.ModuleContext) bool {
 	// TODO(b/263308293) remove this
 	if a.properties.IsCoverageVariant {
@@ -2395,11 +2375,14 @@ func (a *apexBundle) GenerateAndroidBuildActions(ctx android.ModuleContext) {
 	// 3) some fields in apexBundle struct are configured
 	a.installDir = android.PathForModuleInstall(ctx, "apex")
 	a.filesInfo = vctx.filesInfo
-	a.aconfigFiles = collectAconfigFiles(ctx, a.filesInfo)
 
 	a.setPayloadFsType(ctx)
 	a.setSystemLibLink(ctx)
 	a.compatSymlinks = makeCompatSymlinks(a.BaseModuleName(), ctx)
+
+	////////////////////////////////////////////////////////////////////////////////////////////
+	// 3.a) some artifacts are generated from the collected files
+	a.filesInfo = append(a.filesInfo, a.buildAconfigFiles(ctx)...)
 
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// 4) generate the build rules to create the APEX. This is done in builder.go.
