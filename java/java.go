@@ -2011,11 +2011,11 @@ type JavaApiLibraryProperties struct {
 
 	// List of shared java libs that this module has dependencies to and
 	// should be passed as classpath in javac invocation
-	Libs []string
+	Libs proptools.Configurable[[]string]
 
 	// List of java libs that this module has static dependencies to and will be
 	// merge zipped after metalava invocation
-	Static_libs []string
+	Static_libs proptools.Configurable[[]string]
 
 	// Version of previously released API file for compatibility check.
 	Previous_api *string `android:"path"`
@@ -2191,8 +2191,8 @@ func (al *ApiLibrary) DepsMutator(ctx android.BottomUpMutatorContext) {
 
 		}
 	}
-	ctx.AddVariationDependencies(nil, libTag, al.properties.Libs...)
-	ctx.AddVariationDependencies(nil, staticLibTag, al.properties.Static_libs...)
+	ctx.AddVariationDependencies(nil, libTag, al.properties.Libs.GetOrDefault(ctx, nil)...)
+	ctx.AddVariationDependencies(nil, staticLibTag, al.properties.Static_libs.GetOrDefault(ctx, nil)...)
 
 	for _, aconfigDeclarationsName := range al.properties.Aconfig_declarations {
 		ctx.AddDependency(ctx.Module(), aconfigDeclarationTag, aconfigDeclarationsName)
@@ -2426,16 +2426,16 @@ func (al *ApiLibrary) TargetSdkVersion(ctx android.EarlyModuleContext) android.A
 
 func (al *ApiLibrary) IDEInfo(ctx android.BaseModuleContext, i *android.IdeInfo) {
 	i.Deps = append(i.Deps, al.ideDeps(ctx)...)
-	i.Libs = append(i.Libs, al.properties.Libs...)
-	i.Static_libs = append(i.Static_libs, al.properties.Static_libs...)
+	i.Libs = append(i.Libs, al.properties.Libs.GetOrDefault(ctx, nil)...)
+	i.Static_libs = append(i.Static_libs, al.properties.Static_libs.GetOrDefault(ctx, nil)...)
 	i.SrcJars = append(i.SrcJars, al.stubsSrcJar.String())
 }
 
 // deps of java_api_library for module_bp_java_deps.json
 func (al *ApiLibrary) ideDeps(ctx android.BaseModuleContext) []string {
 	ret := []string{}
-	ret = append(ret, al.properties.Libs...)
-	ret = append(ret, al.properties.Static_libs...)
+	ret = append(ret, al.properties.Libs.GetOrDefault(ctx, nil)...)
+	ret = append(ret, al.properties.Static_libs.GetOrDefault(ctx, nil)...)
 	if al.properties.System_modules != nil {
 		ret = append(ret, proptools.String(al.properties.System_modules))
 	}
@@ -2479,7 +2479,7 @@ type ImportProperties struct {
 	Libs []string
 
 	// List of static java libs that this module has dependencies to
-	Static_libs []string
+	Static_libs proptools.Configurable[[]string]
 
 	// List of files to remove from the jar file(s)
 	Exclude_files []string
@@ -2620,7 +2620,7 @@ func (j *Import) setStrictUpdatabilityLinting(bool) {
 
 func (j *Import) DepsMutator(ctx android.BottomUpMutatorContext) {
 	ctx.AddVariationDependencies(nil, libTag, j.properties.Libs...)
-	ctx.AddVariationDependencies(nil, staticLibTag, j.properties.Static_libs...)
+	ctx.AddVariationDependencies(nil, staticLibTag, j.properties.Static_libs.GetOrDefault(ctx, nil)...)
 
 	if ctx.Device() && Bool(j.dexProperties.Compile_dex) {
 		sdkDeps(ctx, android.SdkContext(j), j.dexer)
