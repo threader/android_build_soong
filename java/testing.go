@@ -633,6 +633,18 @@ func CheckModuleHasDependency(t *testing.T, ctx *android.TestContext, name, vari
 	return false
 }
 
+// CheckModuleHasDependency returns true if the module depends on the expected dependency.
+func CheckModuleHasDependencyWithTag(t *testing.T, ctx *android.TestContext, name, variant string, desiredTag blueprint.DependencyTag, expected string) bool {
+	module := ctx.ModuleForTests(name, variant).Module()
+	found := false
+	ctx.VisitDirectDepsWithTags(module, func(m blueprint.Module, tag blueprint.DependencyTag) {
+		if tag == desiredTag && m.Name() == expected {
+			found = true
+		}
+	})
+	return found
+}
+
 // CheckPlatformBootclasspathModules returns the apex:module pair for the modules depended upon by
 // the platform-bootclasspath module.
 func CheckPlatformBootclasspathModules(t *testing.T, result *android.TestResult, name string, expected []string) {
