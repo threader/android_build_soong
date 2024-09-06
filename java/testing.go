@@ -582,6 +582,7 @@ func gatherRequiredDepsForTest() string {
 				name: "%[1]s-lib",
 				sdk_version: "none",
 				system_modules: "none",
+				srcs: ["a.java"],
 			}
 		`, extra)
 	}
@@ -781,3 +782,5 @@ func FixtureSetBootImageInstallDirOnDevice(name string, installDir string) andro
 		config.installDir = installDir
 	})
 }
+
+var PrepareForTestWithTransitiveClasspathEnabled = android.PrepareForTestWithBuildFlag("RELEASE_USE_TRANSITIVE_JARS_IN_CLASSPATH", "true")
