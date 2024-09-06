@@ -1663,6 +1663,8 @@ func (j *Module) compile(ctx android.ModuleContext, extraSrcJars, extraClasspath
 			Output:      ravenizerOutput,
 		})
 		outputFile = ravenizerOutput
+		localImplementationJars = android.Paths{ravenizerOutput}
+		completeStaticLibsImplementationJars = android.NewDepSet(android.PREORDER, localImplementationJars, nil)
 	}
 
 	if j.shouldApiMapper() {
@@ -1675,6 +1677,8 @@ func (j *Module) compile(ctx android.ModuleContext, extraSrcJars, extraClasspath
 			Output:      apiMapperFile,
 		})
 		outputFile = apiMapperFile
+		localImplementationJars = android.Paths{apiMapperFile}
+		completeStaticLibsImplementationJars = android.NewDepSet(android.PREORDER, localImplementationJars, nil)
 	}
 
 	// Check package restrictions if necessary.
@@ -1696,6 +1700,8 @@ func (j *Module) compile(ctx android.ModuleContext, extraSrcJars, extraClasspath
 			Validation: pkgckFile,
 		})
 		outputFile = packageCheckOutputFile
+		localImplementationJars = android.Paths{packageCheckOutputFile}
+		completeStaticLibsImplementationJars = android.NewDepSet(android.PREORDER, localImplementationJars, nil)
 
 		// Check packages and create a timestamp file when complete.
 		CheckJarPackages(ctx, pkgckFile, outputFile, j.properties.Permitted_packages)
