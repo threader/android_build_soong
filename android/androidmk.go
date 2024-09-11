@@ -983,11 +983,11 @@ func translateAndroidMkEntriesModule(ctx SingletonContext, w io.Writer, moduleIn
 	return nil
 }
 
-func ShouldSkipAndroidMkProcessing(ctx ConfigAndErrorContext, module Module) bool {
+func ShouldSkipAndroidMkProcessing(ctx ConfigurableEvaluatorContext, module Module) bool {
 	return shouldSkipAndroidMkProcessing(ctx, module.base())
 }
 
-func shouldSkipAndroidMkProcessing(ctx ConfigAndErrorContext, module *ModuleBase) bool {
+func shouldSkipAndroidMkProcessing(ctx ConfigurableEvaluatorContext, module *ModuleBase) bool {
 	if !module.commonProperties.NamespaceExportedToMake {
 		// TODO(jeffrygaston) do we want to validate that there are no modules being
 		// exported to Kati that depend on this module?
