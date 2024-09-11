@@ -759,7 +759,10 @@ func checkGlobs(ctx Context, finalOutFile string) error {
 				hasNewDep := false
 				for _, dep := range cachedGlob.Deps {
 					info, err := os.Stat(dep)
-					if err != nil {
+					if errors.Is(err, fs.ErrNotExist) {
+						hasNewDep = true
+						break
+					} else if err != nil {
 						errorsChan <- err
 						continue
 					}
