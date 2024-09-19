@@ -11655,3 +11655,110 @@ func TestPrebuiltStubNoinstall(t *testing.T) {
 		)
 	})
 }
+
+func TestSdkLibraryTransitiveClassLoaderContext(t *testing.T) {
+	// This test case tests that listing the impl lib instead of the top level java_sdk_library
+	// in libs of android_app and java_library does not lead to class loader context device/host
+	// path mismatch errors.
+	android.GroupFixturePreparers(
+		prepareForApexTest,
+		android.PrepareForIntegrationTestWithAndroid,
+		PrepareForTestWithApexBuildComponents,
+		android.FixtureModifyEnv(func(env map[string]string) {
+			env["DISABLE_CONTAINER_CHECK"] = "true"
+		}),
+		withFiles(filesForSdkLibrary),
+		android.FixtureMergeMockFs(android.MockFS{
+			"system/sepolicy/apex/com.android.foo30-file_contexts": nil,
+		}),
+	).RunTestWithBp(t, `
+		apex {
+		name: "com.android.foo30",
+		key: "myapex.key",
+		updatable: true,
+		bootclasspath_fragments: [
+			"foo-bootclasspath-fragment",
+		],
+		java_libs: [
+			"bar",
+		],
+		apps: [
+			"bar-app",
+		],
+		min_sdk_version: "30",
+		}
+		apex_key {
+			name: "myapex.key",
+			public_key: "testkey.avbpubkey",
+			private_key: "testkey.pem",
+		}
+		bootclasspath_fragment {
+			name: "foo-bootclasspath-fragment",
+			contents: [
+				"framework-foo",
+			],
+			apex_available: [
+				"com.android.foo30",
+			],
+			hidden_api: {
+				split_packages: ["*"]
+			},
+		}
+
+		java_sdk_library {
+			name: "framework-foo",
+			srcs: [
+				"A.java"
+			],
+			unsafe_ignore_missing_latest_api: true,
+			apex_available: [
+				"com.android.foo30",
+			],
+			compile_dex: true,
+			sdk_version: "core_current",
+			shared_library: false,
+		}
+
+		java_library {
+			name: "bar",
+			srcs: [
+				"A.java"
+			],
+			libs: [
+				"framework-foo.impl",
+			],
+			apex_available: [
+				"com.android.foo30",
+			],
+			sdk_version: "core_current",
+		}
+
+		java_library {
+			name: "baz",
+			srcs: [
+				"A.java"
+			],
+			libs: [
+				"bar",
+			],
+			sdk_version: "core_current",
+		}
+
+		android_app {
+			name: "bar-app",
+			srcs: [
+				"A.java"
+			],
+			libs: [
+				"baz",
+				"framework-foo.impl",
+			],
+			apex_available: [
+				"com.android.foo30",
+			],
+			sdk_version: "core_current",
+			min_sdk_version: "30",
+			manifest: "AndroidManifest.xml",
+		}
+       `)
+}
