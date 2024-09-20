@@ -224,8 +224,8 @@ java_import {
 			checkBootJarsPackageCheckRule(t, result,
 				append(
 					[]string{
-						"out/soong/.intermediates/prebuilts/apex/prebuilt_com.android.art.deapexer/android_common/deapexer/javalib/core1.jar",
-						"out/soong/.intermediates/prebuilts/apex/prebuilt_com.android.art.deapexer/android_common/deapexer/javalib/core2.jar",
+						"out/soong/.intermediates/prebuilts/apex/com.android.art/android_common_com.android.art/deapexer/javalib/core1.jar",
+						"out/soong/.intermediates/prebuilts/apex/com.android.art/android_common_com.android.art/deapexer/javalib/core2.jar",
 						"out/soong/.intermediates/default/java/framework/android_common/aligned/framework.jar",
 					},
 					java.ApexBootJarDexJarPaths...,
